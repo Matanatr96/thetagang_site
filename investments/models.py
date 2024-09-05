@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy
 
 # Create your models here.
@@ -10,7 +13,13 @@ class Option(models.Model):
     ticker = models.CharField(max_length=5)
     expiration_date = models.DateField('Expiry Date')
     strike_price = models.FloatField("Strike Price")
-    purchase_price = models.FloatField("Price Purchased")
     direction = models.CharField(choices=OptionDirection.choices, max_length=4)
-    closed = models.BooleanField("Is the option closed")
-    when_closed = models.DateField("When was this option closed")
+    purchase_price = models.FloatField("Price Purchased", null=True, blank=True)
+    closed = models.BooleanField("Is the option closed", null=True, blank=True)
+    when_closed = models.DateField("When was this option closed", null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.ticker} {self.strike_price}{self.direction}"
+    
+    def expires_today(self):
+        return self.expiration_date.date() == datetime.today().date()
