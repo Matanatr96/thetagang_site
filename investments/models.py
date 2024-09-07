@@ -15,11 +15,11 @@ class Option(models.Model):
     strike_price = models.FloatField("Strike Price")
     direction = models.CharField(choices=OptionDirection.choices, max_length=4)
     purchase_price = models.FloatField("Price Purchased", null=True, blank=True)
-    closed = models.BooleanField("Is the option closed", null=True, blank=True)
+    is_active = models.BooleanField("Is the option active", default=True)
     when_closed = models.DateField("When was this option closed", null=True, blank=True)
 
     def __str__(self):
         return f"{self.ticker} {self.strike_price}{self.direction}"
     
     def expires_today(self):
-        return self.expiration_date.date() == datetime.today().date()
+        return self.expiration_date.date() == datetime.now().date()

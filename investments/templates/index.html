@@ -1,0 +1,35 @@
+{% load custom_filters %}
+
+{% if all_active_options %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Ticker</th>
+        <th>Expiry Date</th>
+        <th>Strike Price</th>
+        <th>Purchase Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for option in all_active_options %}
+      <tr>
+        <td>{{ option.id }}</td>
+        <td>{{ option.ticker }}</td>
+        <td>{{ option.expiration_date }}</td>
+        <td>{{ option.strike_price }}</td>
+        <td>{{ option.purchase_price }}</td>
+        <td>{{ live_prices|get_option_item:option.id|first }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">Total Purchase Price:</td>
+        <td>{{ total_purchase_price }}</td>
+      </tr>
+    </tfoot>
+  </table>
+{% else %}
+  <p>You don't have any open options!</p>
+{% endif %}
