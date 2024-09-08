@@ -46,6 +46,7 @@ def parse_marketdata_response(response: dict):
     return response['underlyingPrice'][0], response['mid'][0], response['theta'][0]
 
 def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
+    return [0, 1, 2]
     print(ticker, expiration_timestamp, direction, strike_price, api_key)
     side_name = 'put' if direction == 'p' else 'call'
     url = f"https://api.marketdata.app/v1/options/chain/{ticker}/?expiration={expiration_timestamp}&side={side_name}&strike={int(strike_price)}"
@@ -64,3 +65,24 @@ def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: 
     print("ANUSH")
     print(response.json())
     return parse_marketdata_response(response.json())
+
+def calculate_stats(all_active_options, live_prices):
+    money_invested = sum(option.purchase_price for option in all_active_options) * 100
+    
+    total_gain = 0
+    current_theta = 0
+    
+    for option in all_active_options:
+        live_data = live_prices.get(option.id, (0, 0, 0))
+        live_price = live_data[0]
+        total_gain += live_price - option.purchase_price
+        current_theta += live_data[2]  # Assuming theta is the third element
+    
+    pl_percentage = (total_gain / money_invested) * 100 if money_invested != 0 else 0
+    
+    return {
+        'money_invested': money_invested,
+        'total_gain': total_gain,
+        'pl_percentage': pl_percentage,
+        'current_theta': current_theta
+    }
