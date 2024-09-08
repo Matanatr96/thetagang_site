@@ -147,9 +147,11 @@
                     <th>ID</th>
                     <th>Ticker</th>
                     <th>Expiration Date</th>
+                    <th>Num Open</th>
                     <th>Strike Price</th>
-                    <th>Purchase Price</th>
+                    <th>Cost Basis</th>
                     <th>Live Price</th>
+                    <th>Total Gain/Loss</th>
                     <th>Theta</th>
                 </tr>
             </thead>
@@ -159,9 +161,11 @@
                     <td data-label="ID">{{ option.id }}</td>
                     <td data-label="Ticker">{{ option.ticker }}</td>
                     <td data-label="Expiration Date">{{ option.expiration_date }}</td>
+                    <td data-label="Num Open"> {{ option.num_open }}</td>
                     <td data-label="Strike Price">{{ option.strike_price }}</td>
-                    <td data-label="Purchase Price">{{ option.purchase_price }}</td>
+                    <td data-label="Purchase Price">{{ option.cost_basis }}</td>
                     <td data-label="Live Price">{{ live_prices|get_option_item:option.id|slice:"1:2"|first }}</td>
+                    <td data-label="Profit">{{ option.live_pl|floatformat:2 }}</td>
                     <td data-label="Theta">{{ live_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
                 </tr>
                 {% endfor %}

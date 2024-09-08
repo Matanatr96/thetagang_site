@@ -15,16 +15,22 @@ import json
 logger = logging.getLogger(__name__)
 
 def index(request):
-    all_active_options = Option.objects.filter(is_active=True)
-    total_purchase_price = all_active_options.aggregate(Sum('purchase_price'))['purchase_price__sum']
+    all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
+    total_num_open = all_active_options.aggregate(Sum('num_open'))['num_open__sum']
+
     live_prices = get_all_live_option_info(all_active_options)
     print("LIVE PRICES: ", live_prices)
+    update_options_with_live_price(all_active_options, live_prices)
+    stats = calculate_stats(all_active_options, live_prices)
+    
 
     template = loader.get_template("index.html")
     context = {
         'all_active_options': all_active_options,
         'live_prices': live_prices,
-        'total_purchase_price': total_purchase_price}
+        'total_num_open': total_num_open,
+        'stats':stats
+    }
     return HttpResponse(template.render(context, request))
 
 def detail(request, option_id):
@@ -46,7 +52,7 @@ def parse_marketdata_response(response: dict):
     return response['underlyingPrice'][0], response['mid'][0], response['theta'][0]
 
 def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
-    return [0, 1, 2]
+    #return [0, 1, 2]
     print(ticker, expiration_timestamp, direction, strike_price, api_key)
     side_name = 'put' if direction == 'p' else 'call'
     url = f"https://api.marketdata.app/v1/options/chain/{ticker}/?expiration={expiration_timestamp}&side={side_name}&strike={int(strike_price)}"
@@ -67,22 +73,28 @@ def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: 
     return parse_marketdata_response(response.json())
 
 def calculate_stats(all_active_options, live_prices):
-    money_invested = sum(option.purchase_price for option in all_active_options) * 100
-    
+    #TODO(anush) make these all time stats, not just active ones
+    money_invested = 0
     total_gain = 0
     current_theta = 0
     
     for option in all_active_options:
-        live_data = live_prices.get(option.id, (0, 0, 0))
-        live_price = live_data[0]
-        total_gain += live_price - option.purchase_price
-        current_theta += live_data[2]  # Assuming theta is the third element
-    
+        money_invested += option.get_cash_set_aside()
+        _, _, theta = live_prices.get(option.id)
+        total_gain += option.live_pl
+        current_theta += theta 
+
     pl_percentage = (total_gain / money_invested) * 100 if money_invested != 0 else 0
     
     return {
         'money_invested': money_invested,
         'total_gain': total_gain,
         'pl_percentage': pl_percentage,
-        'current_theta': current_theta
+        'current_theta': -current_theta * 100
     }
+
+def update_options_with_live_price(all_active_options: list[Option], live_prices) -> list[Option]:
+    for option, prices in zip(all_active_options, live_prices):
+        option.set_current_value(live_prices[option.id][1])
+    
+    Option.objects.bulk_update(all_active_options, ['live_pl'])

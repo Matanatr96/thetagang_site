@@ -3,46 +3,87 @@ from datetime import datetime
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 # Create your models here.
-class Option(models.Model):
-    class OptionDirection(models.TextChoices):
-        PUT = 'p', gettext_lazy('PUT')
-        CALL = 'c', gettext_lazy('CALL')
-
-    ticker = models.CharField(max_length=5)
-    expiration_date = models.DateField('Expiry Date')
-    strike_price = models.FloatField("Strike Price")
-    direction = models.CharField(choices=OptionDirection.choices, max_length=4) 
-    
+class Ticker(models.Model):
+    nasdaq_name = models.CharField("Nasdaq Ticker Name", max_length=5)
+    name = models.CharField("Full Name of Stock", max_length=20, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.ticker} {self.strike_price}{self.direction} {self.expiration_date}"
+        return(f"{self.nasdaq_name}")
+
+class Security(models.Model):
+    ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE)
+    num_open = models.IntegerField("Owned Securities", default=1) # same thing as is_active
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return(f"{self.num_open}: {self.ticker}")
+
+class Share(Security):
+    average_price = models.FloatField("Average Price of Purchase")
+
+    def buy_shares(self, quantity: int, price: float):
+        new_total_open = self.num_open + quantity
+        old_cost_basis = self.num_open * self.average_price
+        new_cost_basis = quantity * price
+        new_average_price = (old_cost_basis + new_cost_basis) / new_total_open
+
+        self.num_open = new_total_open
+        self.average_price = new_average_price
+        return new_total_open, new_average_price
     
+    def __str__(self):
+        return(f"{self.num_open}: {self.ticker}")
+
+def validate_option_direction(value):
+    if value not in ['p', 'c']:
+        raise ValueError("Invalid option direction. Must be 'p' or 'c'.")
+
+class Option(Security):
+    expiration_date = models.DateField('Expiry Date')
+    strike_price = models.FloatField("Strike Price")
+    direction = models.CharField(max_length=1, choices=[('p', 'PUT'), ('c', 'CALL')], validators=[validate_option_direction])
+    cost_basis = models.FloatField("Cost Basis of this option", default=0)
+    current_value = models.FloatField("Current Value of this option", null=True, blank=True)
+    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True)
+    
+    def set_current_value(self, live_price):
+        self.current_value = self.num_open * live_price
+        self.update_pl()
+
+    def update_pl(self):
+        self.live_pl = (self.cost_basis + self.current_value) * 100
+    
+    def is_short(self):
+        return self.num_open < 0
+    
+    def is_long(self):
+        return self.num_open > 0
+    
+    def get_cash_set_aside(self):
+        base_price = self.strike_price * 100 if self.is_short() else self.profit_loss
+        return self.num_open * -base_price
+
+    def __str__(self):
+        return f"{self.num_open}: {self.ticker} {self.strike_price}{self.direction} {self.expiration_date}"
+
     def expires_today(self):
         return self.expiration_date.date() == datetime.now().date()
     
-class Position(models.Model):
-    base_option = models.ForeignKey(Option, on_delete=models.CASCADE)
-    base_quantity = models.IntegerField("How many base options were purchased", default=-1)
-    # secondary_option = models.ForeignKey(Option, on_delete=models.CASCADE, null=True, blank=True)  # Unimplemented :)
-    # secondary_quantity = models.IntegerField("How many secondary options were purchased")
-    
-    num_legs = models.IntegerField("How many legs does this position have?", default=1)
-    purchase_price = models.FloatField("Avg Price Purchased", null=True, blank=True)
-    closed_price = models.FloatField("Avg Price Purchased", null=True, blank=True)
-    is_active = models.BooleanField("Is the option active", default=True)
-    when_opened = models.DateField("When was this option opened")
-    when_closed = models.DateField("When was this option closed", null=True, blank=True)
-    profit = models.FloatField("When closed, what was the profit made on this position", null=True, blank=True)
+class Transaction(models.Model):
+    date = models.DateField()
+    price = models.FloatField("What did this cost per security")
+    quantity = models.IntegerField("How many shares/options were purchased or sold")
 
-    #TODO(anush) implement a feature to choose which option to close for how much of a profit, would need to make a Leg class in addition to this position class
+    # Fields for the generic foreign key
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    security = GenericForeignKey('content_type', 'object_id')
 
-    def get_profit(self) -> float:
-        if self.profit:
-            return self.profit
-        
-        if 
-
-    def __str__(self) -> str:
-        return f"{self.base_quantity}: {str(self.base_option)}"
+    def __str__(self):
+        return f"{self.date}: {self.security}"
