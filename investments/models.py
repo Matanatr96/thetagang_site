@@ -16,7 +16,7 @@ class Ticker(models.Model):
 
 class Security(models.Model):
     ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE)
-    num_open = models.IntegerField("Owned Securities", default=1) # same thing as is_active
+    num_open = models.FloatField("Owned Securities", default=1) # same thing as is_active
 
     class Meta:
         abstract = True
@@ -74,6 +74,9 @@ class Option(Security):
 
     def expires_today(self):
         return self.expiration_date.date() == datetime.now().date()
+    
+class Cash(Security):
+    ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE, default="FXAIX")
     
 class Transaction(models.Model):
     date = models.DateField()
