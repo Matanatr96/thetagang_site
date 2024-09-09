@@ -116,6 +116,7 @@
     <header>
         <h1>Options Dashboard</h1>
         <a href="/new-page/" class="btn">Go to New Page</a>
+        <button id="addTransactionBtn" class="btn">Add Transaction</button>
     </header>
     <div class="container">
       <div class="stats-container">
@@ -173,4 +174,222 @@
         </table>
     </div>
 </body>
+
+<!-- Modal for adding transaction -->
+<div id="addTransactionModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add New Transaction</h2>
+        <form id="transactionForm">
+            <div class="form-group">
+                <label for="securityType">Security Type:</label>
+                <select id="securityType" name="securityType" required>
+                    <option value="share">Share</option>
+                    <option value="option">Option</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="existingOrNew">Existing or New:</label>
+                <select id="existingOrNew" name="existingOrNew" required>
+                    <option value="existing">Existing</option>
+                    <option value="new">New</option>
+                </select>
+            </div>
+            <div id="existingSecuritySection" class="form-group">
+                <label for="existingSecurity">Select Existing Security:</label>
+                <select id="existingSecurity" name="existingSecurity">
+                    <!-- This will be populated dynamically -->
+                </select>
+            </div>
+            <div id="newSecuritySection" style="display:none;">
+                <div class="form-group">
+                    <label for="ticker">Ticker:</label>
+                    <input type="text" id="ticker" name="ticker">
+                </div>
+                <div id="optionFields" style="display:none;">
+                    <div class="form-group">
+                        <label for="expiration_date">Expiration Date:</label>
+                        <input type="date" id="expiration_date" name="expiration_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="strike_price">Strike Price:</label>
+                        <input type="number" id="strike_price" name="strike_price" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="direction">Direction:</label>
+                        <select id="direction" name="direction">
+                            <option value="c">Call</option>
+                            <option value="p">Put</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" required>
+            </div>
+            <div class="form-group">
+                <label for="price">Price:</label>
+                <input type="number" id="price" name="price" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="date">Transaction Date:</label>
+                <input type="date" id="date" name="date" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Transaction</button>
+        </form>
+    </div>
+</div>
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+    }
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@latest/dist/js.cookie.min.js"></script>
+<script>
+    // Get the modal
+    var modal = document.getElementById("addTransactionModal");
+
+    // Get the button that opens the modal
+    var btn = document.getElementById("addTransactionBtn");
+
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+
+    // When the user clicks the button, open the modal 
+    btn.onclick = function() {
+        modal.style.display = "block";
+    }
+
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Handle form submission
+    document.getElementById("transactionForm").onsubmit = function(e) {
+        e.preventDefault();
+        // Here you would typically send the form data to your backend
+        // For now, we'll just log it to the console
+        console.log("Form submitted");
+        // You can add AJAX call here to send data to the backend
+    }
+    function populateExistingSecurities(securityType) {
+        const select = document.getElementById('existingSecurity');
+        select.innerHTML = '<option value="">Loading...</option>';
+        
+        fetch(`/investments/api/get-securities/?type=${securityType}`)
+            .then(response => response.json())
+            .then(data => {
+                select.innerHTML = '';
+                data.forEach(security => {
+                    const option = document.createElement('option');
+                    option.value = security.id;
+                    option.textContent = security.display_name;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching securities:', error);
+                select.innerHTML = '<option value="">Error loading securities</option>';
+            });
+    }
+
+    // Event listeners for form changes
+    document.getElementById('securityType').addEventListener('change', function(e) {
+        const isOption = e.target.value === 'option';
+        document.getElementById('optionFields').style.display = isOption ? 'block' : 'none';
+        populateExistingSecurities(e.target.value);
+    });
+
+    document.getElementById('existingOrNew').addEventListener('change', function(e) {
+        const isNew = e.target.value === 'new';
+        document.getElementById('existingSecuritySection').style.display = isNew ? 'none' : 'block';
+        document.getElementById('newSecuritySection').style.display = isNew ? 'block' : 'none';
+    });
+
+    // Handle form submission
+    document.getElementById("transactionForm").onsubmit = function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            security_type: document.getElementById("securityType").value,
+            existing_or_new: document.getElementById("existingOrNew").value,
+            existing_security_id: document.getElementById("existingSecurity").value,
+            ticker: document.getElementById("ticker").value,
+            expiration_date: document.getElementById("expiration_date").value,
+            strike_price: document.getElementById("strike_price").value,
+            direction: document.getElementById("direction").value,
+            quantity: document.getElementById("quantity").value,
+            price: document.getElementById("price").value,
+            date: document.getElementById("date").value
+        };
+
+        fetch('/investments/api/create-transaction/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': Cookies.get('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Transaction created successfully');
+                modal.style.display = "none";
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the transaction');
+        });
+    }
+</script>
 </html>

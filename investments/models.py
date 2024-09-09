@@ -70,7 +70,7 @@ class Option(Security):
         return self.num_open * -base_price
 
     def __str__(self):
-        return f"{self.num_open}: {self.ticker} {self.strike_price}{self.direction} {self.expiration_date}"
+        return f"{self.ticker} {self.strike_price}{self.direction} {self.expiration_date}"
 
     def expires_today(self):
         return self.expiration_date.date() == datetime.now().date()
@@ -86,4 +86,4 @@ class Transaction(models.Model):
     security = GenericForeignKey('content_type', 'object_id')
 
     def __str__(self):
-        return f"{self.date}: {self.security}"
+        return f"{self.date}: {self.quantity} {self.security}"
