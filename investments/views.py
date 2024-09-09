@@ -46,7 +46,6 @@ def detail(request, option_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def create_transaction(request):
-    print("HELLO")
     data = json.loads(request.body)
     
     try:

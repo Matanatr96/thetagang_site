@@ -6,10 +6,22 @@ from django.utils.translation import gettext_lazy
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+
+def validate_ticker_type(value):
+    valid_options = ['sto', 'etf', 'mm', 'mf']
+    if value not in valid_options:
+        raise ValueError(f"Invalid ticker type, must be in {valid_options}")
+
 # Create your models here.
 class Ticker(models.Model):
     nasdaq_name = models.CharField("Nasdaq Ticker Name", max_length=5)
     name = models.CharField("Full Name of Stock", max_length=20, blank=True, null=True)
+    type = models.CharField(max_length=3, choices=[
+        ("sto", "Stock"),
+        ("etf", "ETF"),
+        ("mm", "Money Market"),
+        ("mf", "Mutual Fund"),
+    ], validators=[validate_ticker_type])
 
     def __str__(self):
         return(f"{self.nasdaq_name}")
