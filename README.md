@@ -8,3 +8,4 @@
 6. Reduce cost basis of a stock once sell a CC on it
 7. Screener tab, select the best options within my parameters from the tickers I've chosen
 8. Add Cash As an option in the add transaction
+9. Gains table per ticker

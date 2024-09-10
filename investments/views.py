@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.core.exceptions import ObjectDoesNotExist
 
-from investments.models import Option, Share, Transaction, Ticker
+from investments.models import Option, Share, Transaction, Ticker, Cash
 
 import datetime
 import requests
@@ -27,7 +27,7 @@ def index(request):
     live_prices = get_all_live_option_info(all_active_options)
     print("LIVE PRICES: ", live_prices)
     update_options_with_live_price(all_active_options, live_prices)
-    stats = calculate_stats(all_active_options, live_prices)
+    stats = calculate_stats(live_prices)
     
 
     template = loader.get_template("index.html")
@@ -158,22 +158,32 @@ def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: 
     print(response.json())
     return parse_marketdata_response(response.json())
 
-def calculate_stats(all_active_options, live_prices):
+def calculate_stats(live_prices):
     #TODO(anush) make these all time stats, not just active ones
-    money_invested = 0
+    current_portfolio_value = 0
     total_gain = 0
     current_theta = 0
-    
-    for option in all_active_options:
-        money_invested += option.get_cash_set_aside()
-        _, _, theta = live_prices.get(option.id)
-        total_gain += option.live_pl
-        current_theta += theta 
 
-    pl_percentage = (total_gain / money_invested) * 100 if money_invested != 0 else 0
+    all_cash = Cash.objects.all()
+    current_portfolio_value += sum(cash.num_open for cash in all_cash)
+    all_shares = Share.objects.exclude(num_open=0)
+    # TODO(Add live share price api)
+    #current_portfolio_value += sum(share.num_open * share.current_value for share in all_shares)
+    all_options = Option.objects.all()
+
+    for option in all_options:
+        if option.is_open():
+            print(option.id)
+            _, _, theta = live_prices.get(option.id)
+            current_theta += theta * option.num_open
+            current_portfolio_value += option.current_value
+
+        total_gain += option.live_pl
+
+    pl_percentage = (total_gain / current_portfolio_value) * 100 if current_portfolio_value != 0 else 0
     
     return {
-        'money_invested': money_invested,
+        'curr_portfolio_value': current_portfolio_value,
         'total_gain': total_gain,
         'pl_percentage': pl_percentage,
         'current_theta': -current_theta * 100
@@ -183,4 +193,4 @@ def update_options_with_live_price(all_active_options: list[Option], live_prices
     for option, prices in zip(all_active_options, live_prices):
         option.set_current_value(live_prices[option.id][1])
     
-    Option.objects.bulk_update(all_active_options, ['live_pl'])
+    Option.objects.bulk_update(all_active_options, ['current_value'])

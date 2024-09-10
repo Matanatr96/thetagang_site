@@ -60,22 +60,31 @@ class Option(Security):
     expiration_date = models.DateField('Expiry Date')
     strike_price = models.FloatField("Strike Price")
     direction = models.CharField(max_length=1, choices=[('p', 'PUT'), ('c', 'CALL')], validators=[validate_option_direction])
-    cost_basis = models.FloatField("Cost Basis of this option", default=0)
+    cost_basis = models.FloatField("Cost Basis Per Option", default=0)
     current_value = models.FloatField("Current Value of this option", null=True, blank=True)
-    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True)
+    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True, default=0)
     
     def set_current_value(self, live_price):
-        self.current_value = self.num_open * live_price
-        self.update_pl()
+        self.current_value = self.num_open * live_price * 100
+        print("Option", self.num_open, live_price, self.current_value)
+
+    def calculate_live_pl(self):
+        # Returns the PL of this option if we were to close it today 
+        #  (along with historical gains)
+        return self.live_pl + self.current_value
 
     def update_pl(self):
-        self.live_pl = (self.cost_basis + self.current_value) * 100
+        # only needs to happen when a transaction is made on this stock
+        raise NotImplementedError
     
     def is_short(self):
         return self.num_open < 0
     
     def is_long(self):
         return self.num_open > 0
+    
+    def is_open(self):
+        return self.num_open
     
     def get_cash_set_aside(self):
         base_price = self.strike_price * 100 if self.is_short() else self.profit_loss
