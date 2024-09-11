@@ -36,7 +36,7 @@
             background-color: #2980b9;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 2rem;
         }
@@ -110,6 +110,36 @@
         .stat-value {
             float: right;
         }
+        .sidebar {
+            padding: 2rem;
+            width: 300px;
+            min-width: 300px;
+        }
+
+        .gains-by-ticker table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .gains-by-ticker th,
+        .gains-by-ticker td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .gains-by-ticker th {
+            background-color: #f2f2f2;
+        }
+
+        .gains-by-ticker td.negative {
+            color: red;
+        }
+        .dashboard-container {
+            display: flex;
+            gap: 20px;
+        }
+
     </style>
 </head>
 <body>
@@ -119,59 +149,91 @@
         <button id="addTransactionBtn" class="btn">Add Transaction</button>
     </header>
     <div class="container">
-      <div class="stats-container">
-          <div class="stats-box">
-              <div class="stat">
-                  <span class="stat-label">Money Invested:</span>
-                  <span class="stat-value">${{ stats.curr_portfolio_value|floatformat:2 }}</span>
-              </div>
-              <div class="stat">
-                  <span class="stat-label">Total Gain:</span>
-                  <span class="stat-value">${{ stats.total_gain|floatformat:2 }}</span>
-              </div>
-              <div class="stat">
-                  <span class="stat-label">P/L %:</span>
-                  <span class="stat-value">{{ stats.pl_percentage|floatformat:2 }}%</span>
-              </div>
-          </div>
-          <div class="stats-box">
-              <div class="stat">
-                  <span class="stat-label">Current Theta:</span>
-                  <span class="stat-value">${{ stats.current_theta|floatformat:2 }}</span>
-              </div>
-          </div>
+        <div class="stats-container">
+            <div class="stats-box">
+                <div class="stat">
+                    <span class="stat-label">Money Invested:</span>
+                    <span class="stat-value">${{ stats.curr_portfolio_value|floatformat:2 }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total Gain:</span>
+                    <span class="stat-value">${{ stats.total_gain|floatformat:2 }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">P/L %:</span>
+                    <span class="stat-value">{{ stats.pl_percentage|floatformat:2 }}%</span>
+                </div>
+            </div>
+            <div class="stats-box">
+                <div class="stat">
+                    <span class="stat-label">Current Theta:</span>
+                    <span class="stat-value">${{ stats.current_theta|floatformat:2 }}</span>
+                </div>
+            </div>
       </div>
-    <div class="container">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Ticker</th>
-                    <th>Expiration Date</th>
-                    <th>Num Open</th>
-                    <th>Strike Price</th>
-                    <th>Cost Basis</th>
-                    <th>Last Price</th>
-                    <th>Current Value</th>
-                    <th>Theta</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for option in all_active_options %}
-                <tr>
-                    <td data-label="ID">{{ option.id }}</td>
-                    <td data-label="Ticker">{{ option.ticker }}</td>
-                    <td data-label="Expiration Date">{{ option.expiration_date }}</td>
-                    <td data-label="Num Open"> {{ option.num_open }}</td>
-                    <td data-label="Strike Price">{{ option.strike_price }}</td>
-                    <td data-label="Cost Basis">{{ option.cost_basis }}</td>
-                    <td data-label="Last Price">{{ live_prices|get_option_item:option.id|slice:"1:2"|first }}</td>
-                    <td data-label="Current Value">${{ option.current_value|floatformat:2 }}</td>
-                    <td data-label="Theta">{{ live_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="dashboard-container">
+        <div class="container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Ticker</th>
+                        <th>Expiration Date</th>
+                        <th>Num Open</th>
+                        <th>Strike Price</th>
+                        <th>Cost Basis</th>
+                        <th>Last Price</th>
+                        <th>Current Value</th>
+                        <th>Theta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for option in all_active_options %}
+                    <tr>
+                        <td data-label="ID">{{ option.id }}</td>
+                        <td data-label="Ticker">{{ option.ticker }}</td>
+                        <td data-label="Expiration Date">{{ option.expiration_date }}</td>
+                        <td data-label="Num Open"> {{ option.num_open }}</td>
+                        <td data-label="Strike Price">{{ option.strike_price }}</td>
+                        <td data-label="Cost Basis">{{ option.cost_basis }}</td>
+                        <td data-label="Last Price">{{ live_prices|get_option_item:option.id|slice:"1:2"|first }}</td>
+                        <td data-label="Current Value">${{ option.current_value|floatformat:2 }}</td>
+                        <td data-label="Theta">{{ live_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="sidebar">
+            <div class="gains-by-ticker">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Gain</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if gains_by_ticker|type == 'dict' %}
+                            {% for ticker, gain in gains_by_ticker.items %}
+                            <tr>
+                                <td>{{ ticker }}</td>
+                                <td{% if gain < 0 %} class="negative"{% endif %}>${{ gain|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2">No gains data available</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="2">Unexpected data format for gains: {{ gains_by_ticker|type }}</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </body>
 

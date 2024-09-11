@@ -12,6 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from investments.models import Option, Share, Transaction, Ticker, Cash
 
+import collections
 import datetime
 import requests
 import logging
@@ -28,14 +29,20 @@ def index(request):
     print("LIVE PRICES: ", live_prices)
     update_options_with_live_price(all_active_options, live_prices)
     stats = calculate_stats(live_prices)
-    
+    gains_by_ticker = get_gains_by_ticker()
+
+    # Ensure gains_by_ticker is a dictionary
+    if not isinstance(gains_by_ticker, dict):
+        print("Warning: gains_by_ticker is not a dictionary. Converting to dict.")
+        gains_by_ticker = dict(gains_by_ticker) if hasattr(gains_by_ticker, '__iter__') else {"Error": float(gains_by_ticker)}
 
     template = loader.get_template("index.html")
     context = {
         'all_active_options': all_active_options,
         'live_prices': live_prices,
         'total_num_open': total_num_open,
-        'stats':stats
+        'stats':stats,
+        'gains_by_ticker': gains_by_ticker,
     }
     return HttpResponse(template.render(context, request))
 
@@ -194,3 +201,17 @@ def update_options_with_live_price(all_active_options: list[Option], live_prices
         option.set_current_value(live_prices[option.id][1])
     
     Option.objects.bulk_update(all_active_options, ['current_value'])
+
+def get_gains_by_ticker():
+    all_options = Option.objects.all()
+    all_shares = Share.objects.exclude()
+
+    all_gains = collections.defaultdict(float)
+
+    for option in all_options:
+        all_gains[option.ticker.nasdaq_name] += option.live_pl
+
+    for share in all_shares:
+        all_gains[share.ticker.nasdaq_name] += share.live_pl
+
+    return dict(all_gains)

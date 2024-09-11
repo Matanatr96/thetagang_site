@@ -37,7 +37,19 @@ class Security(models.Model):
         return(f"{self.num_open}: {self.ticker}")
 
 class Share(Security):
+    cost_basis = models.FloatField("Cost Basis Per Share", default=0)
     average_price = models.FloatField("Average Price of Purchase")
+    current_value = models.FloatField("Current Value of this stock", null=True, blank=True)
+    live_pl = models.FloatField("Live Profit/Loss on these shares", null=True, blank=True, default=0)
+
+    def set_current_value(self, live_price):
+        self.current_value = self.num_open * live_price
+        print("Share", self.num_open, live_price, self.current_value)
+
+    def calculate_live_pl(self):
+        # Returns the PL of this stock if we were to close it today 
+        #  (along with historical gains)
+        return self.live_pl + self.current_value
 
     def buy_shares(self, quantity: int, price: float):
         new_total_open = self.num_open + quantity
