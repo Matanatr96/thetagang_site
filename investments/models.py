@@ -37,9 +37,9 @@ class Security(models.Model):
         return(f"{self.num_open}: {self.ticker}")
 
 class Share(Security):
-    cost_basis = models.FloatField("Cost Basis Per Share", default=0)
-    average_price = models.FloatField("Average Price of Purchase")
-    current_value = models.FloatField("Current Value of this stock", null=True, blank=True)
+    cost_basis = models.FloatField("Cost Basis Per Share", default=0) # per share
+    #average_price = models.FloatField("Average Price of Purchase")
+    current_value = models.FloatField("Current Value of this stock", null=True, blank=True, default=0)
     live_pl = models.FloatField("Live Profit/Loss on these shares", null=True, blank=True, default=0)
 
     def set_current_value(self, live_price):
@@ -49,17 +49,8 @@ class Share(Security):
     def calculate_live_pl(self):
         # Returns the PL of this stock if we were to close it today 
         #  (along with historical gains)
+        print("share pl is updated")
         return self.live_pl + self.current_value
-
-    def buy_shares(self, quantity: int, price: float):
-        new_total_open = self.num_open + quantity
-        old_cost_basis = self.num_open * self.average_price
-        new_cost_basis = quantity * price
-        new_average_price = (old_cost_basis + new_cost_basis) / new_total_open
-
-        self.num_open = new_total_open
-        self.average_price = new_average_price
-        return new_total_open, new_average_price
     
     def __str__(self):
         return(f"{self.num_open}: {self.ticker}")
@@ -72,17 +63,19 @@ class Option(Security):
     expiration_date = models.DateField('Expiry Date')
     strike_price = models.FloatField("Strike Price")
     direction = models.CharField(max_length=1, choices=[('p', 'PUT'), ('c', 'CALL')], validators=[validate_option_direction])
-    cost_basis = models.FloatField("Cost Basis Per Option", default=0)
-    current_value = models.FloatField("Current Value of this option", null=True, blank=True)
-    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True, default=0)
+    cost_basis = models.FloatField("Cost Basis Per Option", default=0) # per share
+    current_value = models.FloatField("Current Value of this option", null=True, blank=True, default=0) # total
+    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True, default=0) # in dollars
     
     def set_current_value(self, live_price):
+        print(f'updating current value of {live_price}')
         self.current_value = self.num_open * live_price * 100
         print("Option", self.num_open, live_price, self.current_value)
 
     def calculate_live_pl(self):
         # Returns the PL of this option if we were to close it today 
         #  (along with historical gains)
+        print("option pl has been updated")
         return self.live_pl + self.current_value
 
     def update_pl(self):
@@ -123,3 +116,15 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.date}: {self.quantity} {self.security}"
+    
+
+class PortfolioTracker(models.Model):
+    value = models.FloatField("What was the portfolio valued at?")
+    date = models.DateField("When was this value accrued?")
+
+    @classmethod
+    def get_oldest_value(cls):
+        if oldest_record := cls.objects.order_by('date').first():
+             return oldest_record.value, oldest_record.date
+        
+        return None, None

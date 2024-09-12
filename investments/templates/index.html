@@ -179,11 +179,11 @@
                         <th>ID</th>
                         <th>Ticker</th>
                         <th>Expiration Date</th>
+                        <th>Direction</th>
                         <th>Num Open</th>
                         <th>Strike Price</th>
                         <th>Cost Basis</th>
-                        <th>Last Price</th>
-                        <th>Current Value</th>
+                        <th>LP / CV</th>
                         <th>Theta</th>
                     </tr>
                 </thead>
@@ -193,12 +193,15 @@
                         <td data-label="ID">{{ option.id }}</td>
                         <td data-label="Ticker">{{ option.ticker }}</td>
                         <td data-label="Expiration Date">{{ option.expiration_date }}</td>
+                        <td data-label="Direction">{{ option.direction }}</td>
                         <td data-label="Num Open"> {{ option.num_open }}</td>
                         <td data-label="Strike Price">{{ option.strike_price }}</td>
                         <td data-label="Cost Basis">{{ option.cost_basis }}</td>
-                        <td data-label="Last Price">{{ live_prices|get_option_item:option.id|slice:"1:2"|first }}</td>
-                        <td data-label="Current Value">${{ option.current_value|floatformat:2 }}</td>
-                        <td data-label="Theta">{{ live_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
+                        <td data-label="Last Price / Current Value">
+                            <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
+                            <div>${{ option.current_value|floatformat:2 }}</div>
+                        </td>
+                        <td data-label="Theta">{{ live_option_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

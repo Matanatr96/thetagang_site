@@ -11,39 +11,36 @@ from django.utils.dateparse import parse_date
 from django.core.exceptions import ObjectDoesNotExist
 
 from investments.models import Option, Share, Transaction, Ticker, Cash
+from investments.helpers import get_live_prices, update_prices, calculate_stats
 
-import collections
-import datetime
-import requests
 import logging
-import time
 import json
 
 logger = logging.getLogger(__name__)
 
 def index(request):
-    all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
-    total_num_open = all_active_options.aggregate(Sum('num_open'))['num_open__sum']
-
-    live_prices = get_all_live_option_info(all_active_options)
-    print("LIVE PRICES: ", live_prices)
-    update_options_with_live_price(all_active_options, live_prices)
+    live_prices = get_live_prices()  # live_option_prices, live_stock_prices
+    update_prices(live_prices)
     stats = calculate_stats(live_prices)
-    gains_by_ticker = get_gains_by_ticker()
+    print("STATS: ", stats['stats'])
 
-    # Ensure gains_by_ticker is a dictionary
-    if not isinstance(gains_by_ticker, dict):
-        print("Warning: gains_by_ticker is not a dictionary. Converting to dict.")
-        gains_by_ticker = dict(gains_by_ticker) if hasattr(gains_by_ticker, '__iter__') else {"Error": float(gains_by_ticker)}
+    all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
+    all_active_stocks = Share.objects.exclude(num_open=0)
 
-    template = loader.get_template("index.html")
     context = {
         'all_active_options': all_active_options,
-        'live_prices': live_prices,
-        'total_num_open': total_num_open,
-        'stats':stats,
-        'gains_by_ticker': gains_by_ticker,
     }
+
+    context |= live_prices
+    context |= stats
+
+    print("FINAL CONTEXT ", context)
+    # # Ensure gains_by_ticker is a dictionary
+    # if not isinstance(gains_by_ticker, dict):
+    #     print("Warning: gains_by_ticker is not a dictionary. Converting to dict.")
+    #     gains_by_ticker = dict(gains_by_ticker) if hasattr(gains_by_ticker, '__iter__') else {"Error": float(gains_by_ticker)}
+
+    template = loader.get_template("index.html")
     return HttpResponse(template.render(context, request))
 
 def detail(request, option_id):
@@ -129,89 +126,3 @@ def get_securities(request):
     ]
     
     return JsonResponse(securities_data, safe=False)
-
-# ----------- Helpers ---------------
-def get_all_live_option_info(all_active_options: list[Option]) -> list[tuple]:
-    live_prices = {}
-    api_key = settings.MARKET_DATA_API
-    for option in all_active_options:
-        option_data = make_marketdata_api_call(option.ticker, option.expiration_date.isoformat(), option.direction, option.strike_price, api_key)
-        live_prices[option.id] = option_data
-
-    return live_prices
-
-# Returns live price, underlying price and theta for now
-def parse_marketdata_response(response: dict):
-    return response['underlyingPrice'][0], response['mid'][0], response['theta'][0]
-
-def make_marketdata_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
-    #return [0, 1, 2]
-    print(ticker, expiration_timestamp, direction, strike_price, api_key)
-    side_name = 'put' if direction == 'p' else 'call'
-    url = f"https://api.marketdata.app/v1/options/chain/{ticker}/?expiration={expiration_timestamp}&side={side_name}&strike={int(strike_price)}"
-    print("url", url)
-
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f"Bearer {api_key}"
-        }
-    response = requests.get(url, headers=headers)
-    if response.status_code not in {200, 203}:
-        logger.error(response.text)
-        logger.error(response.content)
-        raise Exception(f"Error fetching data for {ticker}: {response.status_code}")
-
-    print("ANUSH")
-    print(response.json())
-    return parse_marketdata_response(response.json())
-
-def calculate_stats(live_prices):
-    #TODO(anush) make these all time stats, not just active ones
-    current_portfolio_value = 0
-    total_gain = 0
-    current_theta = 0
-
-    all_cash = Cash.objects.all()
-    current_portfolio_value += sum(cash.num_open for cash in all_cash)
-    all_shares = Share.objects.exclude(num_open=0)
-    # TODO(Add live share price api)
-    #current_portfolio_value += sum(share.num_open * share.current_value for share in all_shares)
-    all_options = Option.objects.all()
-
-    for option in all_options:
-        if option.is_open():
-            print(option.id)
-            _, _, theta = live_prices.get(option.id)
-            current_theta += theta * option.num_open
-            current_portfolio_value += option.current_value
-
-        total_gain += option.live_pl
-
-    pl_percentage = (total_gain / current_portfolio_value) * 100 if current_portfolio_value != 0 else 0
-    
-    return {
-        'curr_portfolio_value': current_portfolio_value,
-        'total_gain': total_gain,
-        'pl_percentage': pl_percentage,
-        'current_theta': -current_theta * 100
-    }
-
-def update_options_with_live_price(all_active_options: list[Option], live_prices) -> list[Option]:
-    for option, prices in zip(all_active_options, live_prices):
-        option.set_current_value(live_prices[option.id][1])
-    
-    Option.objects.bulk_update(all_active_options, ['current_value'])
-
-def get_gains_by_ticker():
-    all_options = Option.objects.all()
-    all_shares = Share.objects.exclude()
-
-    all_gains = collections.defaultdict(float)
-
-    for option in all_options:
-        all_gains[option.ticker.nasdaq_name] += option.live_pl
-
-    for share in all_shares:
-        all_gains[share.ticker.nasdaq_name] += share.live_pl
-
-    return dict(all_gains)
