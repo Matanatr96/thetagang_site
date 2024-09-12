@@ -105,6 +105,7 @@ def calculate_portfolio_gains(live_prices):
     current_portfolio_value = sum(cash.num_open for cash in all_cash)
 
     gains_by_ticker, current_theta = get_gains_by_ticker(live_option_prices)
+    # TODO add cash from transactions that wasn't from a deposit?
     total_gain = sum(gains_by_ticker.values())
     current_portfolio_value += total_gain
 
@@ -117,6 +118,7 @@ def calculate_portfolio_gains(live_prices):
             'total_gain': total_gain,
             'pl_percentage': pl_percentage,
             'current_theta': current_theta * 100,
+            'APY': ((current_theta * 100 * 365) / current_portfolio_value) * 100 # % gains if I get this theta daily for the rest of the year
         },
         'gains_by_ticker': gains_by_ticker
     }

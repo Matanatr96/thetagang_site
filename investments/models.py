@@ -128,3 +128,6 @@ class PortfolioTracker(models.Model):
              return oldest_record.value, oldest_record.date
         
         return None, None
+    
+    def __str__(self):
+        return f"{self.date}: {self.value}"

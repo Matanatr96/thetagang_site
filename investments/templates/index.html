@@ -152,7 +152,7 @@
         <div class="stats-container">
             <div class="stats-box">
                 <div class="stat">
-                    <span class="stat-label">Money Invested:</span>
+                    <span class="stat-label">Current Portfolio Value:</span>
                     <span class="stat-value">${{ stats.curr_portfolio_value|floatformat:2 }}</span>
                 </div>
                 <div class="stat">
@@ -168,6 +168,10 @@
                 <div class="stat">
                     <span class="stat-label">Current Theta:</span>
                     <span class="stat-value">${{ stats.current_theta|floatformat:2 }}</span>
+                </div>
+                <div class="stat"></div>
+                    <span class="stat-label">APY:</span>
+                    <span class="stat-value">{{ stats.APY|floatformat:2 }}%</span>
                 </div>
             </div>
       </div>
