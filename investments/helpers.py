@@ -55,7 +55,7 @@ def get_all_live_option_info(all_active_options: list[Option]):
 
     return live_prices
 
-def make_share_api_call(ticker: str):
+def make_share_api_call(ticker: str, api_key: str):
     # TODO implement this function
     return 180 if ticker == "TSLA" else 22
 
@@ -104,10 +104,11 @@ def calculate_portfolio_gains(live_prices):
     all_cash = Cash.objects.all()
     current_portfolio_value = sum(cash.num_open for cash in all_cash)
 
-    gains_by_ticker, current_theta = get_gains_by_ticker(live_option_prices)
-    # TODO add cash from transactions that wasn't from a deposit?
+    gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
+    # TODO add cash from transactions that wasn't from a deposit? (interest) but its already calculated above?
     total_gain = sum(gains_by_ticker.values())
-    current_portfolio_value += total_gain
+    current_portfolio_value += current_values
+    print(f'curr value: {current_portfolio_value} old value {oldest_portfolio_value}')
 
     pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value != 0 else 0
     PortfolioTracker(current_portfolio_value, datetime.date.today())
@@ -128,16 +129,19 @@ def get_gains_by_ticker(live_option_prices):
     all_shares = Share.objects.all()
 
     all_gains = collections.defaultdict(float)
+    curr_values = 0
     curr_theta = 0
 
     for option in all_options:
-        live_pl = option.calculate_live_pl()
+        live_pl = option.calculate_pl()
         all_gains[option.ticker.nasdaq_name] += live_pl
+        curr_values += option.current_value
         if option.is_open():
             _, _, theta = live_option_prices.get(option.id)
             curr_theta += theta * option.num_open
 
     for share in all_shares:
-        all_gains[share.ticker.nasdaq_name] += share.calculate_live_pl()
+        all_gains[share.ticker.nasdaq_name] += share.calculate_pl()
+        curr_values += share.current_value
 
-    return dict(all_gains), curr_theta
+    return dict(all_gains), curr_theta, curr_values

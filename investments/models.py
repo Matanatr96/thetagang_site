@@ -28,7 +28,20 @@ class Ticker(models.Model):
 
 class Security(models.Model):
     ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE)
-    num_open = models.FloatField("Owned Securities", default=1) # same thing as is_active
+    num_open = models.FloatField("Owned Securities", default=1)
+    cost_basis = models.FloatField("Cost Basis Per Security", default=0) # per share/option
+    current_value = models.FloatField("Current Value of this Security", null=True, blank=True, default=0) # total
+    live_pl = models.FloatField("Live Profit/Loss on These Securities", null=True, blank=True, default=0) # in dollars
+
+    def calculate_pl(self):
+        # Returns the PL of this option if we were to close it today 
+        #  (along with historical gains)
+        print("option pl has been updated")
+        return self.live_pl + self.current_value
+    
+    def update_pl(self):
+        # only needs to happen when a transaction is made on this stock
+        raise NotImplementedError
 
     class Meta:
         abstract = True
@@ -37,21 +50,10 @@ class Security(models.Model):
         return(f"{self.num_open}: {self.ticker}")
 
 class Share(Security):
-    cost_basis = models.FloatField("Cost Basis Per Share", default=0) # per share
-    #average_price = models.FloatField("Average Price of Purchase")
-    current_value = models.FloatField("Current Value of this stock", null=True, blank=True, default=0)
-    live_pl = models.FloatField("Live Profit/Loss on these shares", null=True, blank=True, default=0)
-
     def set_current_value(self, live_price):
         self.current_value = self.num_open * live_price
         print("Share", self.num_open, live_price, self.current_value)
 
-    def calculate_live_pl(self):
-        # Returns the PL of this stock if we were to close it today 
-        #  (along with historical gains)
-        print("share pl is updated")
-        return self.live_pl + self.current_value
-    
     def __str__(self):
         return(f"{self.num_open}: {self.ticker}")
 
@@ -63,25 +65,10 @@ class Option(Security):
     expiration_date = models.DateField('Expiry Date')
     strike_price = models.FloatField("Strike Price")
     direction = models.CharField(max_length=1, choices=[('p', 'PUT'), ('c', 'CALL')], validators=[validate_option_direction])
-    cost_basis = models.FloatField("Cost Basis Per Option", default=0) # per share
-    current_value = models.FloatField("Current Value of this option", null=True, blank=True, default=0) # total
-    live_pl = models.FloatField("Live Profit/Loss on this option", null=True, blank=True, default=0) # in dollars
-    
     def set_current_value(self, live_price):
         print(f'updating current value of {live_price}')
         self.current_value = self.num_open * live_price * 100
         print("Option", self.num_open, live_price, self.current_value)
-
-    def calculate_live_pl(self):
-        # Returns the PL of this option if we were to close it today 
-        #  (along with historical gains)
-        print("option pl has been updated")
-        return self.live_pl + self.current_value
-
-    def update_pl(self):
-        # only needs to happen when a transaction is made on this stock
-        raise NotImplementedError
-    
     def is_short(self):
         return self.num_open < 0
     
@@ -101,8 +88,13 @@ class Option(Security):
     def expires_today(self):
         return self.expiration_date.date() == datetime.now().date()
     
-class Cash(Security):
+class Cash(models.Model):
     ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE, default="FXAIX")
+    num_open = models.FloatField("Owned Cash", default=1)
+    description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest")], default='d')
+
+    def __str__(self):
+        return(f"{self.num_open}: {self.ticker}")
     
 class Transaction(models.Model):
     date = models.DateField()

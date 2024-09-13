@@ -177,39 +177,74 @@
       </div>
     <div class="dashboard-container">
         <div class="container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Ticker</th>
-                        <th>Expiration Date</th>
-                        <th>Direction</th>
-                        <th>Num Open</th>
-                        <th>Strike Price</th>
-                        <th>Cost Basis</th>
-                        <th>LP / CV</th>
-                        <th>Theta</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for option in all_active_options %}
-                    <tr>
-                        <td data-label="ID">{{ option.id }}</td>
-                        <td data-label="Ticker">{{ option.ticker }}</td>
-                        <td data-label="Expiration Date">{{ option.expiration_date }}</td>
-                        <td data-label="Direction">{{ option.direction }}</td>
-                        <td data-label="Num Open"> {{ option.num_open }}</td>
-                        <td data-label="Strike Price">{{ option.strike_price }}</td>
-                        <td data-label="Cost Basis">{{ option.cost_basis }}</td>
-                        <td data-label="Last Price / Current Value">
-                            <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
-                            <div>${{ option.current_value|floatformat:2 }}</div>
-                        </td>
-                        <td data-label="Theta">{{ live_option_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="container">
+                <div>
+                    Options
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ticker</th>
+                            <th>Expiration Date</th>
+                            <th>Direction</th>
+                            <th>Num Open</th>
+                            <th>Strike Price</th>
+                            <th>Cost Basis</th>
+                            <th>LP / CV</th>
+                            <th>Theta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for option in all_active_options %}
+                        <tr>
+                            <td data-label="ID">{{ option.id }}</td>
+                            <td data-label="Ticker">{{ option.ticker }}</td>
+                            <td data-label="Expiration Date">{{ option.expiration_date }}</td>
+                            <td data-label="Direction">{{ option.direction }}</td>
+                            <td data-label="Num Open"> {{ option.num_open }}</td>
+                            <td data-label="Strike Price">{{ option.strike_price }}</td>
+                            <td data-label="Cost Basis">{{ option.cost_basis }}</td>
+                            <td data-label="Last Price / Current Value">
+                                <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
+                                <div>${{ option.current_value|floatformat:2 }}</div>
+                            </td>
+                            <td data-label="Theta">{{ live_option_prices|get_option_item:option.id|slice:"2:3"|first }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="container">
+                <div>
+                    Stocks
+                </div>
+                <table>
+                    <thead></thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ticker</th>
+                            <th>Num Open</th>
+                            <th>Cost Basis</th>
+                            <th>LP / CV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for share in all_active_shares %}
+                        <tr>
+                            <td data-label="ID">{{ share.id }}</td>
+                            <td data-label="Ticker">{{ share.ticker }}</td>
+                            <td data-label="Num Open"> {{ share.num_open }}</td>
+                            <td data-label="Cost Basis">{{ share.cost_basis }}</td>
+                            <td data-label="Last Price / Current Value">
+                                <div>{{ live_share_prices|get_option_item:share.id}}</div>
+                                <div>${{ share.current_value|floatformat:2 }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="sidebar">
             <div class="gains-by-ticker">
@@ -302,7 +337,9 @@
     // Event listeners for form changes
     document.getElementById('securityType').addEventListener('change', function(e) {
         const isOption = e.target.value === 'option';
+        const isCash = e.target.value === 'cash'
         document.getElementById('optionFields').style.display = isOption ? 'block' : 'none';
+        document.getElementById('cashFields').style.display = isCash ? 'block' : 'none';
         populateExistingSecurities(e.target.value);
     });
 
@@ -326,7 +363,8 @@
             direction: document.getElementById("direction").value,
             quantity: document.getElementById("quantity").value,
             price: document.getElementById("price").value,
-            date: document.getElementById("date").value
+            date: document.getElementById("date").value,
+            description: document.getElementById("description").value
         };
 
         fetch('/investments/api/create-transaction/', {

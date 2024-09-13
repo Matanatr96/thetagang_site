@@ -9,6 +9,7 @@
                 <select id="securityType" name="securityType" required>
                     <option value="share">Share</option>
                     <option value="option">Option</option>
+                    <option value="cash">Cash</option>
                 </select>
             </div>
             <div class="form-group">
@@ -43,6 +44,15 @@
                         <select id="direction" name="direction">
                             <option value="c">Call</option>
                             <option value="p">Put</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="cashFields", style="display:none;">
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <select id="description" name="description">
+                            <option value="d">Deposit</option>
+                            <option value="i">Interest</option>
                         </select>
                     </div>
                 </div>

@@ -25,21 +25,17 @@ def index(request):
     print("STATS: ", stats['stats'])
 
     all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
-    all_active_stocks = Share.objects.exclude(num_open=0)
+    all_active_shares = Share.objects.exclude(num_open=0)
 
     context = {
         'all_active_options': all_active_options,
+        'all_active_shares': all_active_shares
     }
 
     context |= live_prices
     context |= stats
 
     print("FINAL CONTEXT ", context)
-    # # Ensure gains_by_ticker is a dictionary
-    # if not isinstance(gains_by_ticker, dict):
-    #     print("Warning: gains_by_ticker is not a dictionary. Converting to dict.")
-    #     gains_by_ticker = dict(gains_by_ticker) if hasattr(gains_by_ticker, '__iter__') else {"Error": float(gains_by_ticker)}
-
     template = loader.get_template("index.html")
     return HttpResponse(template.render(context, request))
 
@@ -64,8 +60,10 @@ def create_transaction(request):
                 security_id = data['existing_security_id']
                 if security_type == 'share':
                     security = Share.objects.get(id=security_id)
-                else:
+                elif security_type == 'option':
                     security = Option.objects.get(id=security_id)
+                else: 
+                    security = Cash.objects.get(id=security_id)
                 
                 # Update existing security
                 security.num_open += quantity
@@ -82,16 +80,25 @@ def create_transaction(request):
                     security = Share.objects.create(
                         ticker=ticker,
                         num_open=quantity,
-                        average_price=price
+                        cost_basis=price,
+                        live_pl=-quantity*price
                     )
-                else:
+                elif security_type == 'option':
                     security = Option.objects.create(
                         ticker=ticker,
                         num_open=quantity,
                         expiration_date=parse_date(data['expiration_date']),
                         strike_price=float(data['strike_price']),
                         direction=data['direction'],
-                        cost_basis=price
+                        cost_basis=price,
+                        live_pl=-quantity*price
+                    )
+                else:
+                    ticker.type='mm'
+                    security = Cash.objects.create(
+                        ticker=ticker,
+                        num_open=price,
+                        description=data['description']
                     )
 
             # Create new transaction
@@ -114,8 +121,10 @@ def get_securities(request):
     
     if security_type == 'share':
         securities = Share.objects.all()
-    else:
+    elif security_type == 'option':
         securities = Option.objects.filter(expiration_date__gte=timezone.now())
+    else:
+        securities = Cash.objects.all()
     
     securities_data = [
         {
