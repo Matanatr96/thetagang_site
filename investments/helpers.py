@@ -57,7 +57,7 @@ def get_all_live_option_info(all_active_options: list[Option]):
 
 def make_share_api_call(ticker: str, api_key: str):
     # TODO implement this function
-    return 180 if ticker == "TSLA" else 22
+    return 180 if ticker == "TSLA" else 25
 
 def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
     # TODO implement api caching for recently called api calls
@@ -102,9 +102,11 @@ def calculate_portfolio_gains(live_prices):
     live_option_prices, live_share_prices = live_prices["live_option_prices"], live_prices["live_share_prices"]
     
     all_cash = Cash.objects.all()
-    current_portfolio_value = sum(cash.num_open for cash in all_cash)
+    cash_val = sum(cash.num_open for cash in all_cash)
+    current_portfolio_value = cash_val
 
     gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
+    print("curr:", current_values)
     # TODO add cash from transactions that wasn't from a deposit? (interest) but its already calculated above?
     total_gain = sum(gains_by_ticker.values())
     current_portfolio_value += current_values
@@ -115,6 +117,7 @@ def calculate_portfolio_gains(live_prices):
     print(current_theta)
     return {
         'stats': {
+            'current_cash': cash_val,
             'curr_portfolio_value': current_portfolio_value,
             'total_gain': total_gain,
             'pl_percentage': pl_percentage,

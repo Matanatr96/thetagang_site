@@ -65,12 +65,7 @@ def create_transaction(request):
                 else: 
                     security = Cash.objects.get(id=security_id)
                 
-                # Update existing security
-                security.num_open += quantity
-                if isinstance(security, Share):
-                    security.average_price = ((security.average_price * security.num_open) + (price * quantity)) / (security.num_open + quantity)
-                elif isinstance(security, Option):
-                    security.cost_basis = ((security.cost_basis * security.num_open) + (price * quantity)) / (security.num_open + quantity)
+                security.transact(price=price, quantity=quantity)
                 security.save()
 
             else:  # New security
@@ -83,7 +78,10 @@ def create_transaction(request):
                         cost_basis=price,
                         live_pl=-quantity*price
                     )
+                    print("ticker created, now updating cash value")
+                    security.update_cash_value(price=price, quantity=quantity)
                 elif security_type == 'option':
+                    print("made it here")
                     security = Option.objects.create(
                         ticker=ticker,
                         num_open=quantity,
@@ -93,6 +91,8 @@ def create_transaction(request):
                         cost_basis=price,
                         live_pl=-quantity*price
                     )
+                    print("MDATE")
+                    security.update_cash_value(quantity=quantity, price=price*100) # don't need to update cost basis nor num_open, just cash
                 else:
                     ticker.type='mm'
                     security = Cash.objects.create(
@@ -108,8 +108,8 @@ def create_transaction(request):
                 quantity=quantity,
                 security=security,
             )
-            if not security_type == "cash":
-                Cash.update_value(price, quantity)  #update the cash value with the transaction just made
+            # if not security_type == "cash":
+            #     Cash.update_value(price, quantity)  #update the cash value with the transaction just made -> TODO if its not a covered call!
 
         return JsonResponse({'status': 'success', 'message': 'Transaction created successfully'})
     except ObjectDoesNotExist:

@@ -30,18 +30,29 @@ class Security(models.Model):
     ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE)
     num_open = models.FloatField("Owned Securities", default=1)
     cost_basis = models.FloatField("Cost Basis Per Security", default=0) # per share/option
-    current_value = models.FloatField("Current Value of this Security", null=True, blank=True, default=0) # total
+    current_value = models.FloatField("Current Value of this Security", null=True, blank=True, default=0) # total. Updates only when we view in the view
     live_pl = models.FloatField("Live Profit/Loss on These Securities", null=True, blank=True, default=0) # in dollars
-
-    def calculate_pl(self):
-        # Returns the PL of this option if we were to close it today 
-        #  (along with historical gains)
-        print("option pl has been updated")
-        return self.live_pl + self.current_value
     
-    def update_pl(self):
-        # only needs to happen when a transaction is made on this stock
-        raise NotImplementedError
+    def update_live_pl(self, price, quantity):
+        self.live_pl += -quantity * price
+    
+    def update_cost_basis(self, price, quantity):
+        if self.num_open + quantity == 0:
+            self.cost_basis = 0
+            return 0
+        self.cost_basis = ((self.cost_basis * self.num_open) + (price * quantity)) / (self.num_open + quantity)
+        return self.cost_basis
+    
+    def update_num_open(self, quantity):
+        self.num_open += quantity
+        if self.num_open == 0:
+            print(f"Closed! {self}")
+    
+    def update_cash_value(self, price, quantity):
+        print(f"updating cash value for {self}")
+        deposit_cash = Cash.objects.get(id=1)
+        deposit_cash.num_open += price * -quantity
+        deposit_cash.save()
 
     class Meta:
         abstract = True
@@ -53,6 +64,17 @@ class Share(Security):
     def set_current_value(self, live_price):
         self.current_value = self.num_open * live_price
         print("Share", self.num_open, live_price, self.current_value)
+
+    def transact(self, price, quantity):
+        self.update_cost_basis(price, quantity)
+        self.update_cash_value(price, quantity)
+        self.update_live_pl(price, quantity)
+        self.update_num_open(quantity)
+
+    def calculate_pl(self):
+        # Returns the PL of this option if we were to close it today 
+        #  (along with historical gains)
+        return self.live_pl + self.current_value
 
     def __str__(self):
         return(f"{self.num_open}: {self.ticker}")
@@ -69,6 +91,7 @@ class Option(Security):
         print(f'updating current value of {live_price}')
         self.current_value = self.num_open * live_price * 100
         print("Option", self.num_open, live_price, self.current_value)
+
     def is_short(self):
         return self.num_open < 0
     
@@ -78,6 +101,33 @@ class Option(Security):
     def is_open(self):
         return self.num_open
     
+    def calculate_pl(self):
+        # Returns the PL of this option if we were to close it today 
+        #  (along with historical gains)
+        return (self.live_pl * 100) + self.current_value
+    
+    def transact(self, price, quantity):
+        if self.num_open < 0 and quantity > 0 and self.direction == 'c':
+            self.close_covered_call(price, quantity) # updates cost basis and live_pl as well
+            self.update_num_open(quantity)
+        else:
+            self.update_cost_basis(price, quantity)
+            self.update_cash_value(price*100, quantity)
+            self.update_live_pl(price, quantity)
+            self.update_num_open(quantity)
+
+    # if we close a covered call, we want to reduce the cost basis of the stock instead of changing the total gains
+    def close_covered_call(self, price, quantity):
+        print('closing covered call')
+        overall_profit_from_this_trade = (self.cost_basis - price) * quantity * 100 #positive if its a profit, negative otherwise
+        self.live_pl += overall_profit_from_this_trade
+        print('overall profit from this closure', overall_profit_from_this_trade)
+        # apply this value to the current stock cost basis
+        share = Share.objects.get(ticker=self.ticker)
+        share.cost_basis -= share.num_open / overall_profit_from_this_trade
+        share.save()
+        print(f'reducing cost basis by { overall_profit_from_this_trade / share.num_open}')
+
     def get_cash_set_aside(self):
         base_price = self.strike_price * 100 if self.is_short() else self.profit_loss
         return self.num_open * -base_price
@@ -92,15 +142,9 @@ class Cash(models.Model):
     ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE, default="FXAIX")
     num_open = models.FloatField("Owned Cash", default=1)
     description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest")], default='d')
-
-    @classmethod
-    def update_value(cls, price, quantity):
-        deposit_cash = cls.objects.get(ticker='FZFXX')
-        deposit_cash.num_open += price * -quantity
-        deposit_cash.save()
-
+    
     def __str__(self):
-        return(f"{self.num_open}: {self.ticker}{self.description}")
+        return(f"{self.num_open}: {self.ticker} {self.description}")
     
 class Transaction(models.Model):
     date = models.DateField()

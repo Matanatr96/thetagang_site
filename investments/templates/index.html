@@ -166,6 +166,10 @@
             </div>
             <div class="stats-box">
                 <div class="stat">
+                    <span class="stat-label">Current Cash:</span>
+                    <span class="stat-value">${{ stats.current_cash|floatformat:2 }}</span>
+                </div>
+                <div class="stat">
                     <span class="stat-label">Current Theta:</span>
                     <span class="stat-value">${{ stats.current_theta|floatformat:2 }}</span>
                 </div>
@@ -204,7 +208,7 @@
                             <td data-label="Direction">{{ option.direction }}</td>
                             <td data-label="Num Open"> {{ option.num_open }}</td>
                             <td data-label="Strike Price">{{ option.strike_price }}</td>
-                            <td data-label="Cost Basis">{{ option.cost_basis }}</td>
+                            <td data-label="Cost Basis">{{ option.cost_basis|floatformat:2 }}</td>
                             <td data-label="Last Price / Current Value">
                                 <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
                                 <div>${{ option.current_value|floatformat:2 }}</div>
@@ -235,7 +239,7 @@
                             <td data-label="ID">{{ share.id }}</td>
                             <td data-label="Ticker">{{ share.ticker }}</td>
                             <td data-label="Num Open"> {{ share.num_open }}</td>
-                            <td data-label="Cost Basis">{{ share.cost_basis }}</td>
+                            <td data-label="Cost Basis">{{ share.cost_basis|floatformat:2 }}</td>
                             <td data-label="Last Price / Current Value">
                                 <div>{{ live_share_prices|get_option_item:share.id}}</div>
                                 <div>${{ share.current_value|floatformat:2 }}</div>
