@@ -52,7 +52,7 @@ def create_transaction(request):
         with transaction.atomic():
             security_type = data['security_type']
             existing_or_new = data['existing_or_new']
-            quantity = int(data['quantity'])
+            quantity = float(data['quantity'])
             price = float(data['price'])
             date = parse_date(data['date'])
 
@@ -97,7 +97,7 @@ def create_transaction(request):
                     ticker.type='mm'
                     security = Cash.objects.create(
                         ticker=ticker,
-                        num_open=price,
+                        num_open=quantity,
                         description=data['description']
                     )
 
@@ -108,6 +108,8 @@ def create_transaction(request):
                 quantity=quantity,
                 security=security,
             )
+            if not security_type == "cash":
+                Cash.update_value(price, quantity)  #update the cash value with the transaction just made
 
         return JsonResponse({'status': 'success', 'message': 'Transaction created successfully'})
     except ObjectDoesNotExist:

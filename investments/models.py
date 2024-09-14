@@ -93,8 +93,14 @@ class Cash(models.Model):
     num_open = models.FloatField("Owned Cash", default=1)
     description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest")], default='d')
 
+    @classmethod
+    def update_value(cls, price, quantity):
+        deposit_cash = cls.objects.get(ticker='FZFXX')
+        deposit_cash.num_open += price * -quantity
+        deposit_cash.save()
+
     def __str__(self):
-        return(f"{self.num_open}: {self.ticker}")
+        return(f"{self.num_open}: {self.ticker}{self.description}")
     
 class Transaction(models.Model):
     date = models.DateField()
