@@ -82,6 +82,9 @@ class Share(Security):
 def validate_option_direction(value):
     if value not in ['p', 'c']:
         raise ValueError("Invalid option direction. Must be 'p' or 'c'.")
+    
+
+# TODO the closing contract price should be lower than the average open price currently. Then thats a win. Where do we track those wins? Who knows
 
 class Option(Security):
     expiration_date = models.DateField('Expiry Date')

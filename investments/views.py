@@ -108,8 +108,6 @@ def create_transaction(request):
                 quantity=quantity,
                 security=security,
             )
-            # if not security_type == "cash":
-            #     Cash.update_value(price, quantity)  #update the cash value with the transaction just made -> TODO if its not a covered call!
 
         return JsonResponse({'status': 'success', 'message': 'Transaction created successfully'})
     except ObjectDoesNotExist:
