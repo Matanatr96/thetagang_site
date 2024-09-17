@@ -60,14 +60,17 @@ def create_transaction(request):
                 security_id = data['existing_security_id']
                 if security_type == 'share':
                     security = Share.objects.get(id=security_id)
+                    security.transact(price=price, quantity=quantity)
+                    security.save()
                 elif security_type == 'option':
                     security = Option.objects.get(id=security_id)
+                    security.transact(price=price, quantity=quantity)
+                    security.save()
                 else: 
-                    security = Cash.objects.get(id=security_id)
-                
-                security.transact(price=price, quantity=quantity)
-                security.save()
-
+                    security = Cash.objects.create(
+                        num_open=quantity,
+                        description=data['description']
+                    )
             else:  # New security
                 ticker, _ = Ticker.objects.get_or_create(nasdaq_name=data['ticker'])
                 
@@ -94,9 +97,7 @@ def create_transaction(request):
                     print("MDATE")
                     security.update_cash_value(quantity=quantity, price=price*100) # don't need to update cost basis nor num_open, just cash
                 else:
-                    ticker.type='mm'
                     security = Cash.objects.create(
-                        ticker=ticker,
                         num_open=quantity,
                         description=data['description']
                     )
@@ -107,6 +108,7 @@ def create_transaction(request):
                 price=price,
                 quantity=quantity,
                 security=security,
+                value=price*quantity
             )
 
         return JsonResponse({'status': 'success', 'message': 'Transaction created successfully'})

@@ -342,9 +342,16 @@
     document.getElementById('securityType').addEventListener('change', function(e) {
         const isOption = e.target.value === 'option';
         const isCash = e.target.value === 'cash'
+        document.getElementById('existingOrNew').style.display = isCash ? 'none' : 'block';
+        document.getElementById('ticker').style.display = isCash ? 'none' : 'block';
+        document.getElementById('existingSecurity').style.display = isCash ? 'none' : 'block';
+        document.getElementById('existingSecuritySection').style.display = isCash ? 'none' : 'block';
+        document.getElementById('newSecuritySection').style.display = isCash ? 'block' : 'none';
         document.getElementById('optionFields').style.display = isOption ? 'block' : 'none';
         document.getElementById('cashFields').style.display = isCash ? 'block' : 'none';
-        populateExistingSecurities(e.target.value);
+        if (!isCash) {
+            populateExistingSecurities(e.target.value);
+        }
     });
 
     document.getElementById('existingOrNew').addEventListener('change', function(e) {

@@ -112,12 +112,12 @@ class Option(Security):
     def transact(self, price, quantity):
         if self.num_open < 0 and quantity > 0 and self.direction == 'c':
             self.close_covered_call(price, quantity) # updates cost basis and live_pl as well
-            self.update_num_open(quantity)
         else:
             self.update_cost_basis(price, quantity)
             self.update_cash_value(price*100, quantity)
             self.update_live_pl(price, quantity)
-            self.update_num_open(quantity)
+        
+        self.update_num_open(quantity)
 
     # if we close a covered call, we want to reduce the cost basis of the stock instead of changing the total gains
     def close_covered_call(self, price, quantity):
@@ -142,17 +142,17 @@ class Option(Security):
         return self.expiration_date.date() == datetime.now().date()
     
 class Cash(models.Model):
-    ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE, default="FXAIX")
     num_open = models.FloatField("Owned Cash", default=1)
     description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest")], default='d')
     
     def __str__(self):
-        return(f"{self.num_open}: {self.ticker} {self.description}")
+        return(f"{self.num_open}: {self.description}")
     
 class Transaction(models.Model):
     date = models.DateField()
     price = models.FloatField("What did this cost per security")
     quantity = models.IntegerField("How many shares/options were purchased or sold")
+    value = models.FloatField("Total value of the transaction")
 
     # Fields for the generic foreign key
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -160,7 +160,8 @@ class Transaction(models.Model):
     security = GenericForeignKey('content_type', 'object_id')
 
     def __str__(self):
-        return f"{self.date}: {self.quantity} {self.security}"
+        s_or_b = "Sell" if self.quantity < 1 else "Buy"
+        return f"{s_or_b} {self.date}: {self.quantity} {self.security} @${self.price} | {self.value}"
     
 
 class PortfolioTracker(models.Model):

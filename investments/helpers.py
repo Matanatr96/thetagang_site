@@ -102,27 +102,33 @@ def calculate_portfolio_gains(live_prices):
     live_option_prices, live_share_prices = live_prices["live_option_prices"], live_prices["live_share_prices"]
     
     all_cash = Cash.objects.all()
-    cash_val = sum(cash.num_open for cash in all_cash)
-    current_portfolio_value = cash_val
+    deposits_val = sum(cash.num_open for cash in all_cash if cash.description=='d')
+    current_portfolio_value = deposits_val
 
     gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
     print("curr:", current_values)
     # TODO add cash from transactions that wasn't from a deposit? (interest) but its already calculated above?
-    total_gain = sum(gains_by_ticker.values())
+    interest_gains = sum(cash.num_open for cash in all_cash if cash.description=='i')
+    total_gain = sum(gains_by_ticker.values()) + interest_gains
+    total_cash = deposits_val + interest_gains
     current_portfolio_value += current_values
     print(f'curr value: {current_portfolio_value} old value {oldest_portfolio_value}')
 
-    pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value != 0 else 0
-    PortfolioTracker(current_portfolio_value, datetime.date.today())
+    pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value else 0
+    apy = ((current_theta * 100 * 365) / current_portfolio_value) * 100 if current_portfolio_value else 0 # % gains if I get this theta daily for the rest of the year
+    PortfolioTracker.objects.create(
+        value=current_portfolio_value,
+        date=datetime.date.today()
+    )
     print(current_theta)
     return {
         'stats': {
-            'current_cash': cash_val,
+            'current_cash': total_cash,
             'curr_portfolio_value': current_portfolio_value,
             'total_gain': total_gain,
             'pl_percentage': pl_percentage,
             'current_theta': current_theta * 100,
-            'APY': ((current_theta * 100 * 365) / current_portfolio_value) * 100 # % gains if I get this theta daily for the rest of the year
+            'APY':  apy
         },
         'gains_by_ticker': gains_by_ticker
     }
