@@ -50,7 +50,7 @@ class Security(models.Model):
     
     def update_cash_value(self, price, quantity):
         print(f"updating cash value for {self}")
-        deposit_cash = Cash.objects.get(id=1)
+        deposit_cash = Cash.objects.order_by('id').first()
         deposit_cash.num_open += price * -quantity
         deposit_cash.save()
 
@@ -174,6 +174,21 @@ class PortfolioTracker(models.Model):
              return oldest_record.value, oldest_record.date
         
         return None, None
+    
+    @classmethod
+    def create_or_update_daily(cls, current_portfolio_value):
+        today = timezone.now().date()
+        obj, created = cls.objects.get_or_create(
+            date=today,
+            defaults={'value': current_portfolio_value}
+        )
+        
+        if not created:
+            # If the object already existed, update its value
+            obj.value = current_portfolio_value
+            obj.save()
+        
+        return obj, created
     
     def __str__(self):
         return f"{self.date}: {self.value}"

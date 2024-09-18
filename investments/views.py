@@ -81,10 +81,8 @@ def create_transaction(request):
                         cost_basis=price,
                         live_pl=-quantity*price
                     )
-                    print("ticker created, now updating cash value")
                     security.update_cash_value(price=price, quantity=quantity)
                 elif security_type == 'option':
-                    print("made it here")
                     security = Option.objects.create(
                         ticker=ticker,
                         num_open=quantity,
@@ -94,7 +92,6 @@ def create_transaction(request):
                         cost_basis=price,
                         live_pl=-quantity*price
                     )
-                    print("MDATE")
                     security.update_cash_value(quantity=quantity, price=price*100) # don't need to update cost basis nor num_open, just cash
                 else:
                     security = Cash.objects.create(
@@ -120,7 +117,6 @@ def create_transaction(request):
 @require_http_methods(["GET"])
 def get_securities(request):
     security_type = request.GET.get('type', 'option')
-    
     if security_type == 'share':
         securities = Share.objects.all()
     elif security_type == 'option':

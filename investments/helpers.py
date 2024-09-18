@@ -56,8 +56,19 @@ def get_all_live_option_info(all_active_options: list[Option]):
     return live_prices
 
 def make_share_api_call(ticker: str, api_key: str):
-    # TODO implement this function
-    return 180 if ticker == "TSLA" else 25
+    url = f"https://api.marketdata.app/v1/stocks/quotes/{ticker}/"
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': f"Bearer {api_key}"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code not in {200, 203}:
+        raise DataFetchError(ticker, response.status_code, response.text)
+    
+    response = response.json()
+    return float(response['mid'][0])
+
 
 def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
     # TODO implement api caching for recently called api calls
@@ -67,7 +78,7 @@ def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str,
     headers = {
         'Accept': 'application/json',
         'Authorization': f"Bearer {api_key}"
-        }
+    }
     response = requests.get(url, headers=headers)
     if response.status_code not in {200, 203}:
         raise DataFetchError(ticker, response.status_code, response.text)
@@ -107,7 +118,7 @@ def calculate_portfolio_gains(live_prices):
 
     gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
     print("curr:", current_values)
-    # TODO add cash from transactions that wasn't from a deposit? (interest) but its already calculated above?
+
     interest_gains = sum(cash.num_open for cash in all_cash if cash.description=='i')
     total_gain = sum(gains_by_ticker.values()) + interest_gains
     total_cash = deposits_val + interest_gains
@@ -115,12 +126,10 @@ def calculate_portfolio_gains(live_prices):
     print(f'curr value: {current_portfolio_value} old value {oldest_portfolio_value}')
 
     pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value else 0
-    apy = ((current_theta * 100 * 365) / current_portfolio_value) * 100 if current_portfolio_value else 0 # % gains if I get this theta daily for the rest of the year
-    PortfolioTracker.objects.create(
-        value=current_portfolio_value,
-        date=datetime.date.today()
-    )
-    print(current_theta)
+    apy = ((current_theta * 100 * 365) / current_portfolio_value) * 100 if current_portfolio_value else 0 # % gains if I get this theta daily for the year
+
+    # Create a new portfolio tracker if it
+    PortfolioTracker.create_or_update_daily(current_portfolio_value=current_portfolio_value)
     return {
         'stats': {
             'current_cash': total_cash,
