@@ -22,7 +22,7 @@ def index(request):
     live_prices = get_live_prices()  # live_option_prices, live_stock_prices
     update_prices(live_prices)
     stats = calculate_stats(live_prices)
-    print("STATS: ", stats['stats'])
+    logger.warning("STATS: ", stats['stats'])
 
     all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
     all_active_shares = Share.objects.exclude(num_open=0)

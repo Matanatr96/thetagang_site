@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.cache import cache
 
 from investments.models import Option, Share, Transaction, Ticker, Cash, PortfolioTracker
 from investments.error_models import DataFetchError
@@ -56,6 +57,12 @@ def get_all_live_option_info(all_active_options: list[Option]):
     return live_prices
 
 def make_share_api_call(ticker: str, api_key: str):
+    cache_key = f"share_price_{ticker}"
+    
+    if (cached_data := cache.get(cache_key)) is not None:
+        print(f"Returning Cached Data for {ticker}!")
+        return cached_data
+    
     url = f"https://api.marketdata.app/v1/stocks/quotes/{ticker}/"
 
     headers = {
@@ -67,11 +74,16 @@ def make_share_api_call(ticker: str, api_key: str):
         raise DataFetchError(ticker, response.status_code, response.text)
     
     response = response.json()
+    cache.set(key=cache_key, value=float(response['mid'][0]), timeout=1800)
     return float(response['mid'][0])
 
 
 def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
-    # TODO implement api caching for recently called api calls
+    cache_key = f'option_price_{ticker}_{expiration_timestamp}_{direction}_{strike_price}'
+    if (cached_data := cache.get(cache_key)) is not None:
+        logger.info(f"Returning Cached Option data for {ticker}!")
+        return cached_data
+
     side_name = 'put' if direction == 'p' else 'call'
     url = f"https://api.marketdata.app/v1/options/chain/{ticker}/?expiration={expiration_timestamp}&side={side_name}&strike={int(strike_price)}"
 
@@ -84,7 +96,9 @@ def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str,
         raise DataFetchError(ticker, response.status_code, response.text)
 
     response = response.json()
-    return response['underlyingPrice'][0], response['mid'][0], response['theta'][0]
+    local_response = (response['underlyingPrice'][0], response['mid'][0], response['theta'][0])
+    cache.set(key=cache_key, value=local_response, timeout=1800)
+    return local_response
 
 # ----------------------------------------------------------------------- #
 #                             Update Prices
