@@ -27,7 +27,7 @@ def get_live_prices():
     }
 
 def update_prices(live_prices: dict[str, dict]):
-    print("LIVE PRICES", live_prices)
+    logger.debug(f"Live Prices: {live_prices}")
     update_options_with_live_price(live_prices["live_option_prices"])
     update_shares_with_live_price(live_prices["live_share_prices"])
 
@@ -60,7 +60,7 @@ def make_share_api_call(ticker: str, api_key: str):
     cache_key = f"share_price_{ticker}"
     
     if (cached_data := cache.get(cache_key)) is not None:
-        print(f"Returning Cached Data for {ticker}!")
+        logger.info(f"Returned Cached Ticker Data for {ticker}")
         return cached_data
     
     url = f"https://api.marketdata.app/v1/stocks/quotes/{ticker}/"
@@ -81,7 +81,7 @@ def make_share_api_call(ticker: str, api_key: str):
 def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str, strike_price: float, api_key: str):
     cache_key = f'option_price_{ticker}_{expiration_timestamp}_{direction}_{strike_price}'
     if (cached_data := cache.get(cache_key)) is not None:
-        logger.info(f"Returning Cached Option data for {ticker}!")
+        logger.info(f"Returning Cached Option Data for {ticker}")
         return cached_data
 
     side_name = 'put' if direction == 'p' else 'call'
@@ -131,13 +131,12 @@ def calculate_portfolio_gains(live_prices):
     current_portfolio_value = deposits_val
 
     gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
-    print("curr:", current_values)
 
     interest_gains = sum(cash.num_open for cash in all_cash if cash.description=='i')
     total_gain = sum(gains_by_ticker.values()) + interest_gains
     total_cash = deposits_val + interest_gains
     current_portfolio_value += current_values
-    print(f'curr value: {current_portfolio_value} old value {oldest_portfolio_value}')
+    logger.debug("Current Portfolio Value: {current_portfolio_value}, Old Portfolio Value: {oldest_portfolio_value}")
 
     pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value else 0
     apy = ((current_theta * 100 * 365) / current_portfolio_value) * 100 if current_portfolio_value else 0 # % gains if I get this theta daily for the year

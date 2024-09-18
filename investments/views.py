@@ -22,7 +22,7 @@ def index(request):
     live_prices = get_live_prices()  # live_option_prices, live_stock_prices
     update_prices(live_prices)
     stats = calculate_stats(live_prices)
-    logger.warning("STATS: ", stats['stats'])
+    logger.debug(f"STATS: {stats['stats']}")
 
     all_active_options = Option.objects.exclude(num_open=0).order_by('expiration_date')
     all_active_shares = Share.objects.exclude(num_open=0)
@@ -35,7 +35,7 @@ def index(request):
     context |= live_prices
     context |= stats
 
-    print("FINAL CONTEXT ", context)
+    logger.debug(f"FINAL CONTEXT :{context}")
     template = loader.get_template("index.html")
     return HttpResponse(template.render(context, request))
 
@@ -50,6 +50,7 @@ def create_transaction(request):
     
     try:
         with transaction.atomic():
+            logger.info("Updating Existing Security")
             security_type = data['security_type']
             existing_or_new = data['existing_or_new']
             quantity = float(data['quantity'])
@@ -72,6 +73,7 @@ def create_transaction(request):
                         description=data['description']
                     )
             else:  # New security
+                logger.info("Creating New Security")
                 ticker, _ = Ticker.objects.get_or_create(nasdaq_name=data['ticker'])
                 
                 if security_type == 'share':
@@ -107,6 +109,7 @@ def create_transaction(request):
                 security=security,
                 value=price*quantity
             )
+            logger.info("Created New Transaction")
 
         return JsonResponse({'status': 'success', 'message': 'Transaction created successfully'})
     except ObjectDoesNotExist:

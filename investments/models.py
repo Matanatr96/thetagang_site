@@ -6,6 +6,9 @@ from django.utils.translation import gettext_lazy
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 def validate_ticker_type(value):
     valid_options = ['sto', 'etf', 'mm', 'mf']
@@ -46,10 +49,10 @@ class Security(models.Model):
     def update_num_open(self, quantity):
         self.num_open += quantity
         if self.num_open == 0:
-            print(f"Closed! {self}")
+            logger.info("This is a closing transaction")
     
     def update_cash_value(self, price, quantity):
-        print(f"updating cash value for {self}")
+        logger.info(f"updating cash value for {self}")
         deposit_cash = Cash.objects.order_by('id').first()
         deposit_cash.num_open += price * -quantity
         deposit_cash.save()
@@ -63,7 +66,7 @@ class Security(models.Model):
 class Share(Security):
     def set_current_value(self, live_price):
         self.current_value = self.num_open * live_price
-        print("Share", self.num_open, live_price, self.current_value)
+        logger.debug(f"Updating Curr Value of Share: {self.num_open} {live_price} {self.current_value}")
 
     def transact(self, price, quantity):
         self.update_cost_basis(price, quantity)
@@ -91,9 +94,8 @@ class Option(Security):
     strike_price = models.FloatField("Strike Price")
     direction = models.CharField(max_length=1, choices=[('p', 'PUT'), ('c', 'CALL')], validators=[validate_option_direction])
     def set_current_value(self, live_price):
-        print(f'updating current value of {live_price}')
         self.current_value = self.num_open * live_price * 100
-        print("Option", self.num_open, live_price, self.current_value)
+        logger.debug(f"Updating Curr Value of Option: {self.num_open} {live_price} {self.current_value}")
 
     def is_short(self):
         return self.num_open < 0
@@ -121,15 +123,15 @@ class Option(Security):
 
     # if we close a covered call, we want to reduce the cost basis of the stock instead of changing the total gains
     def close_covered_call(self, price, quantity):
-        print('closing covered call')
+        logger.info("Closing Covered Call {self}")
         overall_profit_from_this_trade = (self.cost_basis - price) * quantity * 100 #positive if its a profit, negative otherwise
         self.live_pl += overall_profit_from_this_trade
-        print('overall profit from this closure', overall_profit_from_this_trade)
+        logger.info("Overall Profit from this Closure: {overall_profit_from_this_trade}")
         # apply this value to the current stock cost basis
         share = Share.objects.get(ticker=self.ticker)
         share.cost_basis -= share.num_open / overall_profit_from_this_trade
         share.save()
-        print(f'reducing cost basis by { overall_profit_from_this_trade / share.num_open}')
+        logger.info(f'reducing cost basis by { overall_profit_from_this_trade / share.num_open}')
 
     def get_cash_set_aside(self):
         base_price = self.strike_price * 100 if self.is_short() else self.profit_loss
