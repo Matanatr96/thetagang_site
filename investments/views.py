@@ -19,6 +19,7 @@ import json
 logger = logging.getLogger(__name__)
 
 def index(request):
+    logger.debug("HELLO")
     live_prices = get_live_prices()  # live_option_prices, live_stock_prices
     update_prices(live_prices)
     stats = calculate_stats(live_prices)

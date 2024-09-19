@@ -30,7 +30,7 @@ MARKET_DATA_API = str(os.getenv('MARKET_DATA_API'))
 SECRET_KEY = "django-insecure-)3b^)iah&d3!!ppkwc36&^ihcy=l4bfmc=7a%@7$^do5x%cl(4"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = []
 
@@ -136,6 +136,8 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOG_LEVEL = os.getenv("LOG_LEVEL")
+
 # Logging config
 LOGGING = {
     "version": 1,
@@ -170,17 +172,17 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console", "file"],
-        "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+        "level": "INFO",
     },
     "loggers": {
         "django": {
             "handlers": ["console", "file"],
-            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "level": "INFO",
             "propagate": False,
         },
         "investments": {  # Logger for your app
             "handlers": ["console", "file"],
-            "level": "INFO",
+            "level": LOG_LEVEL,
             "propagate": False,
         },
     },
