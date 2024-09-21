@@ -19,7 +19,6 @@ import json
 logger = logging.getLogger(__name__)
 
 def index(request):
-    logger.debug("HELLO")
     live_prices = get_live_prices()  # live_option_prices, live_stock_prices
     update_prices(live_prices)
     stats = calculate_stats(live_prices)
@@ -124,7 +123,7 @@ def get_securities(request):
     if security_type == 'share':
         securities = Share.objects.all()
     elif security_type == 'option':
-        securities = Option.objects.filter(expiration_date__gte=timezone.now())
+        securities = Option.objects.exclude(num_open=0)
     else:
         securities = Cash.objects.all()
     

@@ -191,10 +191,10 @@
                             <th>ID</th>
                             <th>Ticker</th>
                             <th>Expiration Date</th>
-                            <th>Direction</th>
+                            <th>Strike</th>
                             <th>Num Open</th>
-                            <th>Strike Price</th>
                             <th>Cost Basis</th>
+                            <th>Live G/L</th>
                             <th>LP / CV</th>
                             <th>Theta</th>
                         </tr>
@@ -205,10 +205,10 @@
                             <td data-label="ID">{{ option.id }}</td>
                             <td data-label="Ticker">{{ option.ticker }}</td>
                             <td data-label="Expiration Date">{{ option.expiration_date }}</td>
-                            <td data-label="Direction">{{ option.direction }}</td>
+                            <td data-label="Strike">{{ option.strike_price }}{{ option.direction }}</td>
                             <td data-label="Num Open"> {{ option.num_open }}</td>
-                            <td data-label="Strike Price">{{ option.strike_price }}</td>
                             <td data-label="Cost Basis">{{ option.cost_basis|floatformat:2 }}</td>
+                            <td data-label="Live GL">{{ option_live_gl|get_option_item:option.id|floatformat:2 }}</td>
                             <td data-label="Last Price / Current Value">
                                 <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
                                 <div>${{ option.current_value|floatformat:2 }}</div>
@@ -230,6 +230,7 @@
                             <th>Ticker</th>
                             <th>Num Open</th>
                             <th>Cost Basis</th>
+                            <th>Live G/L</th>
                             <th>LP / CV</th>
                         </tr>
                     </thead>
@@ -240,6 +241,7 @@
                             <td data-label="Ticker">{{ share.ticker }}</td>
                             <td data-label="Num Open"> {{ share.num_open }}</td>
                             <td data-label="Cost Basis">{{ share.cost_basis|floatformat:2 }}</td>
+                            <td data-label="Live GL">{{ share_live_gl|get_option_item:share.id|floatformat:2 }}</td>
                             <td data-label="Last Price / Current Value">
                                 <div>{{ live_share_prices|get_option_item:share.id}}</div>
                                 <div>${{ share.current_value|floatformat:2 }}</div>
@@ -252,6 +254,7 @@
         </div>
         <div class="sidebar">
             <div class="gains-by-ticker">
+                Unrealized + Realized
                 <table>
                     <thead>
                         <tr>

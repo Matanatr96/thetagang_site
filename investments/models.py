@@ -35,6 +35,15 @@ class Security(models.Model):
     cost_basis = models.FloatField("Cost Basis Per Security", default=0) # per share/option
     current_value = models.FloatField("Current Value of this Security", null=True, blank=True, default=0) # total. Updates only when we view in the view
     live_pl = models.FloatField("Live Profit/Loss on These Securities", null=True, blank=True, default=0) # in dollars
+
+    def is_short(self):
+        return self.num_open < 0
+    
+    def is_long(self):
+        return self.num_open > 0
+    
+    def is_open(self):
+        return self.num_open
     
     def update_live_pl(self, price, quantity):
         self.live_pl += -quantity * price
@@ -78,6 +87,11 @@ class Share(Security):
         # Returns the PL of this option if we were to close it today 
         #  (along with historical gains)
         return self.live_pl + self.current_value
+    
+    # Get the live gain loss if we were to sell the share today (Don't include historical gains here)
+    def get_live_gl(self):
+        all_cost_basis = -self.num_open * self.cost_basis
+        return all_cost_basis + self.current_value
 
     def __str__(self):
         return(f"{self.num_open}: {self.ticker}")
@@ -96,20 +110,16 @@ class Option(Security):
     def set_current_value(self, live_price):
         self.current_value = self.num_open * live_price * 100
         logger.debug(f"Updating Curr Value of Option: {self.num_open} {live_price} {self.current_value}")
-
-    def is_short(self):
-        return self.num_open < 0
-    
-    def is_long(self):
-        return self.num_open > 0
-    
-    def is_open(self):
-        return self.num_open
     
     def calculate_pl(self):
         # Returns the PL of this option if we were to close it today 
         #  (along with historical gains)
         return (self.live_pl * 100) + self.current_value
+    
+    # Get the live gain loss if we were to sell the option today (Don't include historical gains here)
+    def get_live_gl(self):
+        all_cost_basis = -self.num_open * self.cost_basis * 100
+        return all_cost_basis + self.current_value
     
     def transact(self, price, quantity):
         if self.num_open < 0 and quantity > 0 and self.direction == 'c':
@@ -123,10 +133,10 @@ class Option(Security):
 
     # if we close a covered call, we want to reduce the cost basis of the stock instead of changing the total gains
     def close_covered_call(self, price, quantity):
-        logger.info("Closing Covered Call {self}")
+        logger.info(f"Closing Covered Call {self}")
         overall_profit_from_this_trade = (self.cost_basis - price) * quantity * 100 #positive if its a profit, negative otherwise
-        self.live_pl += overall_profit_from_this_trade
-        logger.info("Overall Profit from this Closure: {overall_profit_from_this_trade}")
+        self.live_pl += (overall_profit_from_this_trade / 100)
+        logger.info(f"Overall Profit from this Closure: {overall_profit_from_this_trade}")
         # apply this value to the current stock cost basis
         share = Share.objects.get(ticker=self.ticker)
         share.cost_basis -= share.num_open / overall_profit_from_this_trade

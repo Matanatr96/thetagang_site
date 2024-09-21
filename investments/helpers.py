@@ -93,7 +93,10 @@ def make_option_api_call(ticker: str, expiration_timestamp: str, direction: str,
     }
     response = requests.get(url, headers=headers)
     if response.status_code not in {200, 203}:
-        raise DataFetchError(ticker, response.status_code, response.text)
+        logger.error(DataFetchError(ticker, response.status_code, response.text))
+        local_response = (0, 0, 0)
+        cache.set(key=cache_key, value=local_response, timeout=1800)
+        return local_response
 
     response = response.json()
     local_response = (response['underlyingPrice'][0], response['mid'][0], response['theta'][0])
@@ -130,7 +133,7 @@ def calculate_portfolio_gains(live_prices):
     deposits_val = sum(cash.num_open for cash in all_cash if cash.description=='d')
     current_portfolio_value = deposits_val
 
-    gains_by_ticker, current_theta, current_values = get_gains_by_ticker(live_option_prices)
+    gains_by_ticker, live_gls, current_theta, current_values = get_gains_by_ticker(live_option_prices)
 
     interest_gains = sum(cash.num_open for cash in all_cash if cash.description=='i')
     total_gain = sum(gains_by_ticker.values()) + interest_gains
@@ -143,6 +146,7 @@ def calculate_portfolio_gains(live_prices):
 
     # Create a new portfolio tracker if it
     PortfolioTracker.create_or_update_daily(current_portfolio_value=current_portfolio_value)
+    
     return {
         'stats': {
             'current_cash': total_cash,
@@ -152,7 +156,9 @@ def calculate_portfolio_gains(live_prices):
             'current_theta': current_theta * 100,
             'APY':  apy
         },
-        'gains_by_ticker': gains_by_ticker
+        'gains_by_ticker': gains_by_ticker,
+        'share_live_gl': live_gls['share_live_gl'],
+        'option_live_gl': live_gls['option_live_gl']
     }
 
 def get_gains_by_ticker(live_option_prices):
@@ -160,19 +166,30 @@ def get_gains_by_ticker(live_option_prices):
     all_shares = Share.objects.all()
 
     all_gains = collections.defaultdict(float)
+    option_live_gl = collections.defaultdict(float)
+    share_live_gl = collections.defaultdict(float)
     curr_values = 0
     curr_theta = 0
 
     for option in all_options:
         live_pl = option.calculate_pl()
+        logger.debug(f"{option.ticker.nasdaq_name} {live_pl}")
         all_gains[option.ticker.nasdaq_name] += live_pl
         curr_values += option.current_value
         if option.is_open():
             _, _, theta = live_option_prices.get(option.id)
             curr_theta += theta * option.num_open
+            option_live_gl[option.id] = option.get_live_gl()
 
     for share in all_shares:
         all_gains[share.ticker.nasdaq_name] += share.calculate_pl()
         curr_values += share.current_value
+        if share.is_open():
+            share_live_gl[share.id] = share.get_live_gl()
 
-    return dict(all_gains), curr_theta, curr_values
+    live_gls = {
+        'option_live_gl': dict(option_live_gl),
+        'share_live_gl': dict(share_live_gl)
+    }
+
+    return dict(all_gains), live_gls, curr_theta, curr_values

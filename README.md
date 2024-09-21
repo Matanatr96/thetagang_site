@@ -9,6 +9,7 @@
 7. Include open security pl in visual
 ~~8. Add Cash As an option in the add transaction and verify transaction is correct~~
 ~~9. Verify Transactions are handled correctly (transaction should actually subtract money from total)~~
+10. Put/Call success rate
 
 ## Phase 2
 1. Screener tab, select the best options within my parameters from the tickers I've chosen
