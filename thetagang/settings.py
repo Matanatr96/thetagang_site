@@ -32,7 +32,9 @@ SECRET_KEY = "django-insecure-)3b^)iah&d3!!ppkwc36&^ihcy=l4bfmc=7a%@7$^do5x%cl(4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+# Allowed Hosts
+APP_NAME = os.environ.get("FLY_APP_NAME")
+ALLOWED_HOSTS = [f"{APP_NAME}.fly.dev", "127.0.0.1", 'localhost']
 
 
 # Application definition

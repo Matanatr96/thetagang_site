@@ -62,7 +62,7 @@ class Security(models.Model):
     
     def update_cash_value(self, price, quantity):
         logger.info(f"updating cash value for {self}")
-        deposit_cash = Cash.objects.order_by('id').first()
+        deposit_cash = Cash.objects.get(description='m')
         deposit_cash.num_open += price * -quantity
         deposit_cash.save()
 
@@ -139,9 +139,11 @@ class Option(Security):
         logger.info(f"Overall Profit from this Closure: {overall_profit_from_this_trade}")
         # apply this value to the current stock cost basis
         share = Share.objects.get(ticker=self.ticker)
-        share.cost_basis -= share.num_open / overall_profit_from_this_trade
+        old_cost_basis = share.cost_basis
+        share.cost_basis = old_cost_basis - (share.num_open / overall_profit_from_this_trade)
         share.save()
         logger.info(f'reducing cost basis by { overall_profit_from_this_trade / share.num_open}')
+        logger.info(f'old cost basis {old_cost_basis} new cost basis {share.cost_basis}')
 
     def get_cash_set_aside(self):
         base_price = self.strike_price * 100 if self.is_short() else self.profit_loss
@@ -155,7 +157,7 @@ class Option(Security):
     
 class Cash(models.Model):
     num_open = models.FloatField("Owned Cash", default=1)
-    description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest")], default='d')
+    description = models.CharField(max_length=1, choices=[("d", "Deposit"), ("i", "Interest"), ('m', "Main")], default='d')
     
     def __str__(self):
         return(f"{self.num_open}: {self.description}")

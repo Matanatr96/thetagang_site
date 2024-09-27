@@ -130,18 +130,20 @@ def calculate_portfolio_gains(live_prices):
     live_option_prices, live_share_prices = live_prices["live_option_prices"], live_prices["live_share_prices"]
     
     all_cash = Cash.objects.all()
+    main_val = Cash.objects.get(description='m').num_open
     deposits_val = sum(cash.num_open for cash in all_cash if cash.description=='d')
-    current_portfolio_value = deposits_val
+    current_portfolio_value = deposits_val + main_val
 
     gains_by_ticker, live_gls, current_theta, current_values = get_gains_by_ticker(live_option_prices)
 
     interest_gains = sum(cash.num_open for cash in all_cash if cash.description=='i')
     total_gain = sum(gains_by_ticker.values()) + interest_gains
-    total_cash = deposits_val + interest_gains
+    total_cash = deposits_val + interest_gains + main_val
     current_portfolio_value += current_values
     logger.debug("Current Portfolio Value: {current_portfolio_value}, Old Portfolio Value: {oldest_portfolio_value}")
 
-    pl_percentage = ((current_portfolio_value - oldest_portfolio_value) / oldest_portfolio_value) * 100 if oldest_portfolio_value else 0
+    gain_comparison_num = oldest_portfolio_value + deposits_val
+    pl_percentage = ((current_portfolio_value - gain_comparison_num) / gain_comparison_num) * 100 if oldest_portfolio_value else 0
     apy = ((current_theta * 100 * 365) / current_portfolio_value) * 100 if current_portfolio_value else 0 # % gains if I get this theta daily for the year
 
     # Create a new portfolio tracker if it
@@ -183,6 +185,7 @@ def get_gains_by_ticker(live_option_prices):
 
     for share in all_shares:
         all_gains[share.ticker.nasdaq_name] += share.calculate_pl()
+        logger.debug(f"{share.ticker.nasdaq_name} {share.calculate_pl()}")
         curr_values += share.current_value
         if share.is_open():
             share_live_gl[share.id] = share.get_live_gl()

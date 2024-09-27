@@ -208,7 +208,7 @@
                             <td data-label="Strike">{{ option.strike_price }}{{ option.direction }}</td>
                             <td data-label="Num Open"> {{ option.num_open }}</td>
                             <td data-label="Cost Basis">{{ option.cost_basis|floatformat:2 }}</td>
-                            <td data-label="Live GL">{{ option_live_gl|get_option_item:option.id|floatformat:2 }}</td>
+                            <td data-label="Live GL">${{ option_live_gl|get_option_item:option.id|floatformat:2 }}</td>
                             <td data-label="Last Price / Current Value">
                                 <div>{{ live_option_prices|get_option_item:option.id|slice:"1:2"|first }}</div>
                                 <div>${{ option.current_value|floatformat:2 }}</div>
